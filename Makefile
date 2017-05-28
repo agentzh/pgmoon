@@ -1,16 +1,20 @@
-.PHONY: build test local show_types lint
+OPENRESTY_PREFIX=/usr/local/openresty
 
-build:
-	moonc pgmoon
+PREFIX ?=          /usr/local
+LUA_INCLUDE_DIR ?= $(PREFIX)/include
+LUA_LIB_DIR ?=     $(PREFIX)/lib/lua/$(LUA_VERSION)
+INSTALL ?= install
+TEST_FILE ?= t
 
-test: build
-	busted -v
+.PHONY: all test install
 
-local: build
-	luarocks make --local pgmoon-dev-1.rockspec
+all: ;
 
-show_types:
-	psql -U postgres -c "select oid, typname, typcategory, typelem from pg_type where typcategory in ('A', 'B', 'N', 'D', 'S');"
+install: all
+	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty
+	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/pgmoon
+	$(INSTALL) lib/pgmoon.lua $(DESTDIR)/$(LUA_LIB_DIR)/
+	$(INSTALL) lib/pgmoon/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/pgmoon/
 
-lint:
-	moonc -l pgmoon
+test: all
+	PATH=$(OPENRESTY_PREFIX)/nginx/sbin:$$PATH TEST_NGINX_NO_SHUFFLE=1 prove -I../test-nginx/lib -r $(TEST_FILE)
